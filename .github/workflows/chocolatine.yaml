@@ -10,7 +10,7 @@ on:
 
 env:
   MIRROR_URL: "git@github.com:ninaarnaud/chocolatine-miror.git"
-  EXECUTABLES: "sum"
+  EXECUTABLES: "sum,test"
 
 jobs:
   check_mirror:
@@ -140,9 +140,7 @@ jobs:
       - name: Run tests
         id : run_tests
         timeout-minutes: 2
-        run: |
-          make
-          make tests_run
+        run: make tests_run
 
   push_to_mirror:
     name: Push to mirror
@@ -160,5 +158,4 @@ jobs:
         with:
           target_repo_url: ${{ env.MIRROR_URL }}
           ssh_private_key: ${{ secrets.GIT_SSH_PRIVATE_KEY }}
-          # cat /Users/nina/.ssh/github_mirror_key
 
