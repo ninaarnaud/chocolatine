@@ -10,7 +10,7 @@ on:
 
 env:
   MIRROR_URL: "git@github.com:ninaarnaud/chocolatine-miror.git"
-  EXECUTABLES: "sum,test"
+  EXECUTABLES: "sum"
 
 jobs:
   check_mirror:
