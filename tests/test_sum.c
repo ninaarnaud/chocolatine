@@ -1,7 +1,7 @@
 /*
 ** EPITECH PROJECT, 2024
 ** B-DOP-200-MPL-2-1-chocolatine-nina.arnaud
-** File description:
+** File description: test_merge
 ** test_sum.c
 */
 
