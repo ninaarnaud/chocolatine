@@ -115,10 +115,8 @@ jobs:
           # fi
 
           # Split EXECUTABLES into an array
-          IFS=',' read -r -a EXE_ARRAY <<EOF
-          $(printf "%s" "$EXECUTABLES")
-          EOF
-
+          IFS=',' read -r -a EXE_ARRAY <<< "$EXECUTABLES"
+          
           for exe in "${EXE_ARRAY[@]}"; do
             # Check if the executable exists
             if [ ! -x "$exe" ]; then
