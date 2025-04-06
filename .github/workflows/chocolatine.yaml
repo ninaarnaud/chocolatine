@@ -107,15 +107,16 @@ jobs:
       
       - name: Check executables
         id: check_program_compilation
+        shell: bash
         run: |
           # Check EXECUTABLES not empty
-          # if [ -z "${{ env.EXECUTABLES }}" ]; then
-          #   echo "::error::No executables defined in the EXECUTABLES environment variable."
-          #   exit 1
-          # fi
+          if [ -z "${{ env.EXECUTABLES }}" ]; then
+            echo "::error::No executables defined in the EXECUTABLES environment variable."
+            exit 1
+          fi
 
           # Split EXECUTABLES into an array
-          IFS=',' read -r -a EXE_ARRAY <<< "$EXECUTABLES"
+          IFS=',' read -r -a EXE_ARRAY <<< "${{ env.EXECUTABLES }}"
           
           for exe in "${EXE_ARRAY[@]}"; do
             # Check if the executable exists
