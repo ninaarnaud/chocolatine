@@ -1,0 +1,165 @@
+name: Chocolatine
+
+on:
+  push:
+    branches-ignore:
+      - 'ga-ignore-*'
+  pull_request:
+    branches-ignore:
+      - 'ga-ignore-*'
+
+env:
+  MIRROR_URL: "https://github.com/ninaarnaud/chocolatine-miror.git"
+  EXECUTABLES: "sum"
+
+jobs:
+  check_mirror:
+    name: Check is not mirror repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check if current repository is not a mirror
+        run: |
+          # Check if the repository is empty
+          if [ -z "${{ env.MIRROR_URL }}" ]; then
+            echo "::error::Repository is empty."
+            exit 1
+          fi
+
+          # Check if the repository is the mirror repository
+          if [ "${{ github.event.repository.clone_url }}" = "${{ env.MIRROR_URL }}" ]; then
+            echo "::error::Repository is a mirror."
+            exit 1
+          fi
+
+  check_coding_style:
+    name: Check Coding Style
+    needs: check_mirror
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/epitech/coding-style-checker:latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Launch Coding Style
+        run: check.sh $(pwd) $(pwd)
+      
+      - name: Check Coding Style
+        id: check_coding_style
+        run: |
+          # check file not exist
+          if [ ! -f coding-style-reports.log ]; then 
+            echo "::error::File coding-style-reports.log does not exist."
+            exit 1
+          fi
+
+          # check file empty
+          if [ ! -s coding-style-reports.log ]; then
+            echo "::notice::No coding style problem found."
+            exit 0
+          fi
+
+          error=0
+
+          while IFS= read -r line; do
+            file=$(echo "$line" | cut -d':' -f1) 
+            line_number=$(echo "$line" | cut -d':' -f2) 
+            error_type=$(echo "$line" | cut -d':' -f3 | xargs)  
+            clean_file=$(echo "$file" | sed 's|^\./||')
+
+            if [ "$error_type" = "MINOR" ]; then
+                error=1
+                echo "::error::MINOR coding style error: ${clean_file}#L${line_number}"
+            elif [ "$error_type" = "MAJOR" ]; then
+                error=1
+                echo "::error::MAJOR coding style error: ${clean_file}#L${line_number}"
+            elif [ "$error_type" = "INFO" ]; then
+                error=1
+                echo "::error::INFO coding style error: ${clean_file}#L${line_number}"
+            fi
+          done < coding-style-reports.log
+
+          if [ "$error" -eq 0 ]; then
+            echo "::notice::No coding style problem found."
+            exit 0
+          else
+            echo "::error::Coding style problem found."
+            exit 1
+          fi
+  
+  check_program_compilation:
+    needs: check_coding_style
+    name: Check Program Compilation
+    runs-on: ubuntu-latest
+    container:
+      image: epitechcontent/epitest-docker:latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+  
+      - name: Run make
+        timeout-minutes: 2
+        run: make
+      
+      - name: Run make clean
+        run: make clean
+      
+      - name: Check executables
+        id: check_program_compilation
+        run: |
+          # Check EXECUTABLES not empty
+          # if [ -z "${{ env.EXECUTABLES }}" ]; then
+          #   echo "::error::No executables defined in the EXECUTABLES environment variable."
+          #   exit 1
+          # fi
+
+          # Split EXECUTABLES into an array
+          IFS=',' read -r -a EXE_ARRAY <<EOF
+          $(printf "%s" "$EXECUTABLES")
+          EOF
+
+          for exe in "${EXE_ARRAY[@]}"; do
+            # Check if the executable exists
+            if [ ! -x "$exe" ]; then
+              echo "::error::Executable $exe not found."
+              exit 1
+            fi
+          done
+  
+  run_tests:
+    name: Launch tests
+    runs-on: ubuntu-latest
+    needs: check_program_compilation
+    container:
+      image: epitechcontent/epitest-docker:latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run tests
+        id : run_tests
+        timeout-minutes: 2
+        run: |
+          make
+          make tests_run
+
+  push_to_mirror:
+    name: Push to mirror
+    runs-on: ubuntu-latest
+    needs: run_tests
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Mirroring repository
+        id: push_to_mirror
+        uses: pixta-dev/repository-mirroring-action@v1
+        with:
+          target_repo_url: ${{ env.MIRROR_URL }}
+          ssh_private_key: ${{ secrets.GIT_SSH_PRIVATE_KEY }}
+          # cat /Users/nina/.ssh/github_mirror_key
+
